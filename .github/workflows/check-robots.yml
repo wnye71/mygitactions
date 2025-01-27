@@ -13,15 +13,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check robots.txt status
+        id: check-status
         run: |
           status=$(curl -s -o /dev/null -w "%{http_code}" https://www.williamnye.co.uk/robots.txt)
-          if [ $status -ne 200 ]; then
-            echo "robots.txt returned $status"
-            exit 1
+          echo "HTTP status: $status"
+          echo "status=$status" >> $GITHUB_ENV
+          if [ "$status" -eq 200 ]; then
+            echo "robots.txt is OK (status: $status). Exiting workflow."
+            exit 0
           fi
 
       - name: Post alert to Slack
-        if: failure()
+        if: always() && env.status != '200'
         uses: slackapi/slack-github-action@v2.0.0
         with:
           method: chat.postMessage
@@ -31,6 +34,5 @@ jobs:
             text: |
               🚨 *robots.txt check failed*  
               The `robots.txt` file at <https://www.williamnye.co.uk/robots.txt> did not return a `200 OK` status code.  
-              Status Code: $status  
+              Status Code: ${{ env.status }}  
               Please investigate the issue.
-
