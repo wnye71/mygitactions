@@ -1,0 +1,30 @@
+name: Check robots.txt
+
+on:
+ schedule:
+   - cron: '0 * * * *'  # Every hour
+ workflow_dispatch:      # Manual trigger
+
+jobs:
+ check:
+   runs-on: ubuntu-latest
+   steps:
+     - name: Check robots.txt status
+       run: |
+         status=$(curl -s -o /dev/null -w "%{http_code}" https://www.williamnye.co.uk/robots.txt)
+         if [ $status -ne 200 ]; then
+           echo "robots.txt returned $status"
+           exit 1
+         fi
+
+     - name: Send alert on failure
+       if: failure()
+       uses: actions/github-script@v6
+       with:
+         script: |
+           github.rest.issues.create({
+             owner: context.repo.owner,
+             repo: context.repo.name,
+             title: '🚨 robots.txt check failed',
+             body: 'robots.txt did not return 200 status code'
+           });
